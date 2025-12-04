@@ -1,0 +1,13 @@
+# Location Configurations for Irrigation System
+locations:
+  karmana:
+    id: "karmana"
+    name: "Karmana, Navoi Region, Uzbekistan"
+    latitude: 40.4800
+    longitude: 65.3550
+    timezone: "Asia/Tashkent"
+    elevation: null
+    description: "Initial test location for irrigation system"
+    crop_type: "cotton"
+    soil_type: "loam"
+    active: true

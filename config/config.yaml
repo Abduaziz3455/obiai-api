@@ -1,0 +1,63 @@
+# Open-Meteo API Configuration
+api:
+  base_url: "https://api.open-meteo.com/v1"
+  endpoints:
+    historical: "/archive"
+    forecast: "/forecast"
+  timeout: 30  # seconds
+
+# Rate Limits (Free Plan)
+rate_limits:
+  calls_per_minute: 600
+  calls_per_hour: 5000
+  calls_per_day: 10000
+  calls_per_month: 300000
+  safety_buffer: 0.8  # Use only 80% of limits for safety
+
+# Data Collection Settings
+data_collection:
+  historical:
+    start_date: "2014-11-24"  # 10 years ago
+    end_date: "2024-11-23"
+    chunk_size_days: 90  # 90-day chunks
+  
+  forecast:
+    forecast_days: 1  # Maximum available
+    past_days: 92  # Can use up to 92 if needed
+  
+  # Weather parameters to collect
+  parameters:
+    hourly:
+      - temperature_2m
+      - precipitation
+      - wind_speed_10m
+      - shortwave_radiation
+      - soil_temperature_0_to_7cm
+    
+    # Optional daily aggregations (for analysis)
+    daily:
+      - temperature_2m_max
+      - temperature_2m_min
+      - precipitation_sum
+      - et0_fao_evapotranspiration  # Evapotranspiration
+
+# Resume/Checkpoint Configuration
+resume:
+  enabled: true
+  checkpoint_dir: "data/checkpoints"
+  auto_save_interval: 5  # Save checkpoint every 5 API calls
+
+# Data Processing
+processing:
+  handle_missing: "interpolate"  # Options: interpolate, forward_fill, drop
+  outlier_detection: true
+  validation:
+    temperature_range: [-40, 60]  # Celsius
+    precipitation_range: [0, 500]  # mm
+    wind_speed_range: [0, 200]  # km/h
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/collection.log"
+  console: true

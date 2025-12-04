@@ -1,0 +1,25 @@
+# Existing dependencies
+requests
+pyyaml
+pandas
+numpy
+scikit-learn
+matplotlib
+xgboost
+
+# Web Framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# Database - Tortoise ORM
+tortoise-orm==0.21.7
+aerich==0.7.2
+asyncpg==0.30.0
+
+# Async HTTP
+httpx==0.28.1
+
+# Utilities
+python-dotenv==1.0.1

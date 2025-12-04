@@ -1,0 +1,13 @@
+database:
+  host: localhost
+  port: 5432
+  name: irrigation_db
+  user: irrigation_user
+  password: ${DB_PASSWORD}  # From environment variable
+
+  pool:
+    min_size: 2
+    max_size: 10
+    timeout: 30
+
+  ssl_mode: prefer  # disable, allow, prefer, require
