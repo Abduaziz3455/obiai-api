@@ -23,7 +23,8 @@ class FeatureService:
         self,
         sensor_data: Dict,
         weather_df: pd.DataFrame,
-        planting_date: Optional[date] = None
+        planting_date: Optional[date] = None,
+        sensor_history: Optional[list] = None
     ) -> pd.DataFrame:
         """
         Prepare all 42 features required by the model.
@@ -32,6 +33,7 @@ class FeatureService:
             sensor_data: Dict with latest sensor reading {device_id, timestamp, humidity_percent, temperature}
             weather_df: DataFrame with weather data (columns: timestamp, temperature_2m, precipitation, wind_speed_10m, shortwave_radiation)
             planting_date: Crop planting date (default: April 15)
+            sensor_history: Optional list of historical sensor readings for trend analysis
 
         Returns:
             DataFrame with 42 features in correct order for model
@@ -42,17 +44,49 @@ class FeatureService:
         if weather_df.empty:
             raise ValueError("Weather data is required")
 
-        # Ensure timestamp is datetime
+        # Ensure timestamp is datetime and normalize to timezone-naive
         if not pd.api.types.is_datetime64_any_dtype(weather_df['timestamp']):
             weather_df['timestamp'] = pd.to_datetime(weather_df['timestamp'])
+
+        # Convert to timezone-naive datetime for compatibility
+        if pd.api.types.is_datetime64tz_dtype(weather_df['timestamp']):
+            # Convert to UTC then remove timezone info
+            weather_df['timestamp'] = weather_df['timestamp'].dt.tz_convert('UTC').dt.tz_localize(None)
 
         # Sort by timestamp
         weather_df = weather_df.sort_values('timestamp').reset_index(drop=True)
 
         # Add sensor data to weather DataFrame
-        # The sensor reading corresponds to current time (latest in weather data)
-        weather_df['soil_temperature_0_to_7cm'] = sensor_data['temperature']
-        weather_df['soil_moisture'] = sensor_data['humidity_percent'] / 100.0  # Convert to 0-1
+        if sensor_history and len(sensor_history) > 1:
+            # Convert sensor history to DataFrame for merging
+            sensor_df = pd.DataFrame(sensor_history)
+            sensor_df['timestamp'] = pd.to_datetime(sensor_df['timestamp'])
+
+            # Convert to timezone-naive datetime for compatibility with weather_df
+            if pd.api.types.is_datetime64tz_dtype(sensor_df['timestamp']):
+                # Convert to UTC then remove timezone info
+                sensor_df['timestamp'] = sensor_df['timestamp'].dt.tz_convert('UTC').dt.tz_localize(None)
+
+            sensor_df['soil_temperature_0_to_7cm'] = sensor_df['temperature']
+            sensor_df['soil_moisture'] = sensor_df['humidity_percent'] / 100.0
+
+            # Merge sensor data with weather data based on nearest timestamp
+            # Use merge_asof to match sensor readings to closest weather timestamps
+            weather_df = pd.merge_asof(
+                weather_df.sort_values('timestamp'),
+                sensor_df[['timestamp', 'soil_temperature_0_to_7cm', 'soil_moisture']].sort_values('timestamp'),
+                on='timestamp',
+                direction='nearest',
+                tolerance=pd.Timedelta(hours=12)  # Allow up to 12 hour gap
+            )
+
+            # Fill any remaining NaNs with the latest sensor reading
+            weather_df['soil_temperature_0_to_7cm'] = weather_df['soil_temperature_0_to_7cm'].fillna(sensor_data['temperature'])
+            weather_df['soil_moisture'] = weather_df['soil_moisture'].fillna(sensor_data['humidity_percent'] / 100.0)
+        else:
+            # No history available, use latest reading for all timestamps
+            weather_df['soil_temperature_0_to_7cm'] = sensor_data['temperature']
+            weather_df['soil_moisture'] = sensor_data['humidity_percent'] / 100.0  # Convert to 0-1
 
         # Add basic time features
         df = self._add_time_features(weather_df)
@@ -104,6 +138,17 @@ class FeatureService:
 
         # Return features in correct order
         features_df = latest_df[feature_cols].copy()
+
+        # Check for NaN values and handle them
+        nan_columns = features_df.columns[features_df.isna().any()].tolist()
+        if nan_columns:
+            # Fill NaN values with 0 for safety (these should be rare)
+            print(f"Warning: Found NaN values in features: {nan_columns}. Filling with 0.")
+            features_df = features_df.fillna(0)
+
+        # Final validation - ensure no infinite values
+        if np.isinf(features_df.values).any():
+            raise ValueError("Features contain infinite values")
 
         return features_df
 

@@ -214,6 +214,14 @@ class WeatherService:
             "shortwave_radiation": hourly_data.get("shortwave_radiation", [])
         })
 
+        # Fill NaN values with 0 for safety (API sometimes returns null)
+        df = df.fillna({
+            "temperature_2m": 0,
+            "precipitation": 0,
+            "wind_speed_10m": 0,
+            "shortwave_radiation": 0
+        })
+
         return df
 
     async def _get_cached_weather(

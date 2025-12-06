@@ -19,9 +19,18 @@ class SensorDataRequest(BaseModel):
     @field_validator('timestamp')
     @classmethod
     def timestamp_not_future(cls, v):
-        """Validate that timestamp is not in the future."""
-        if v > datetime.now(v.tzinfo):
+        """Validate that timestamp is not in the future and ensure timezone-aware."""
+        from datetime import timezone
+
+        # If naive datetime, assume UTC
+        if v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+
+        # Check not in future
+        now = datetime.now(timezone.utc)
+        if v > now:
             raise ValueError('timestamp cannot be in the future')
+
         return v
 
     model_config = {
@@ -59,3 +68,27 @@ class SensorDataListResponse(BaseModel):
 
     total: int = Field(..., description="Total number of readings")
     data: list[SensorDataResponse] = Field(..., description="List of sensor readings")
+
+
+class SensorStatistics(BaseModel):
+    """Statistics for sensor readings over a time period."""
+
+    device_id: str = Field(..., description="Sensor device identifier")
+    total_readings: int = Field(..., description="Total number of readings in the period")
+    time_range_hours: float = Field(..., description="Time range covered in hours")
+
+    # Humidity statistics
+    humidity_min: float = Field(..., description="Minimum soil moisture percentage")
+    humidity_max: float = Field(..., description="Maximum soil moisture percentage")
+    humidity_avg: float = Field(..., description="Average soil moisture percentage")
+    humidity_latest: float = Field(..., description="Most recent soil moisture reading")
+
+    # Temperature statistics
+    temperature_min: float = Field(..., description="Minimum soil temperature in Celsius")
+    temperature_max: float = Field(..., description="Maximum soil temperature in Celsius")
+    temperature_avg: float = Field(..., description="Average soil temperature in Celsius")
+    temperature_latest: float = Field(..., description="Most recent temperature reading")
+
+    # Timestamps
+    oldest_reading: datetime = Field(..., description="Timestamp of oldest reading in range")
+    latest_reading: datetime = Field(..., description="Timestamp of most recent reading")

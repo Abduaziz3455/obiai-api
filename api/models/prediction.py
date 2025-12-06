@@ -93,7 +93,9 @@ class PredictionResponse(BaseModel):
     irrigation_needed: int = Field(..., description="Whether irrigation is needed (0=No, 1=Yes)")
     recommended_water_percent: float = Field(..., ge=0, le=100, description="Recommended water amount (%)")
     irrigation_time_min: float = Field(..., ge=0, le=300, description="Recommended irrigation duration (minutes)")
-    confidence: float = Field(..., ge=0, le=1, description="Prediction confidence score (0-1)")
+
+    # Confidence metrics (clearer naming)
+    confidence_score: float = Field(..., ge=0, le=1, description="Model confidence in this prediction (0-1). Higher is better.")
 
     # Additional context
     sensor_data: SensorDataSummary = Field(..., description="Sensor data used")
@@ -107,7 +109,7 @@ class PredictionResponse(BaseModel):
                     "irrigation_needed": 1,
                     "recommended_water_percent": 65.5,
                     "irrigation_time_min": 120.0,
-                    "confidence": 0.87,
+                    "confidence_score": 0.87,
                     "sensor_data": {
                         "device_id": "sensor_001",
                         "timestamp": "2025-11-19T17:55:00Z",

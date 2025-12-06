@@ -3,6 +3,7 @@ Prediction endpoints for irrigation recommendations.
 """
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, status
+import numpy as np
 
 from api.models.prediction import (
     PredictionRequest,
@@ -15,6 +16,19 @@ from api.services.weather_service import WeatherService
 from api.services.feature_service import FeatureService
 from api.services.prediction_service import PredictionService
 from api.dependencies import get_models
+
+
+def safe_float(value, default=0.0, decimals=None):
+    """Convert value to float, replacing NaN/inf with default."""
+    try:
+        val = float(value)
+        if np.isnan(val) or np.isinf(val):
+            return default
+        if decimals is not None:
+            return round(val, decimals)
+        return val
+    except (TypeError, ValueError):
+        return default
 
 router = APIRouter()
 
@@ -65,18 +79,38 @@ async def predict_irrigation(request: PredictionRequest):
             )
 
         # Check if sensor data is not too old (warning if > 24 hours)
-        time_diff = datetime.utcnow() - sensor_reading.timestamp.replace(tzinfo=None)
+        from datetime import timezone
+        now_utc = datetime.now(timezone.utc)
+        sensor_timestamp = sensor_reading.timestamp if sensor_reading.timestamp.tzinfo else sensor_reading.timestamp.replace(tzinfo=timezone.utc)
+        time_diff = now_utc - sensor_timestamp
         if time_diff > timedelta(hours=24):
             # Log warning but continue
             print(f"Warning: Sensor data is {time_diff.total_seconds() / 3600:.1f} hours old")
 
-        # Prepare sensor data dict
+        # Step 1b: Fetch historical sensor data (last 30 days for trends)
+        cutoff_time = now_utc - timedelta(days=30)
+        historical_readings = await SensorReading.filter(
+            device_id=request.device_id,
+            timestamp__gte=cutoff_time
+        ).order_by('timestamp').all()
+
+        # Prepare sensor data dict with latest reading
         sensor_data = {
             "device_id": sensor_reading.device_id,
             "timestamp": sensor_reading.timestamp,
             "humidity_percent": float(sensor_reading.humidity_percent),
             "temperature": float(sensor_reading.temperature)
         }
+
+        # Add historical sensor readings as a list for trend analysis
+        sensor_history = [
+            {
+                "timestamp": reading.timestamp,
+                "humidity_percent": float(reading.humidity_percent),
+                "temperature": float(reading.temperature)
+            }
+            for reading in historical_readings
+        ]
 
         # Step 2: Fetch weather data (current + 30 days historical)
         try:
@@ -104,7 +138,8 @@ async def predict_irrigation(request: PredictionRequest):
             features_df = await feature_service.prepare_features(
                 sensor_data=sensor_data,
                 weather_df=weather_df,
-                planting_date=planting_date
+                planting_date=planting_date,
+                sensor_history=sensor_history if len(sensor_history) > 1 else None
             )
         except Exception as e:
             raise HTTPException(
@@ -130,25 +165,28 @@ async def predict_irrigation(request: PredictionRequest):
         sensor_summary = SensorDataSummary(
             device_id=sensor_data["device_id"],
             timestamp=sensor_data["timestamp"],
-            soil_moisture=sensor_data["humidity_percent"],
-            soil_temperature=sensor_data["temperature"]
+            soil_moisture=safe_float(sensor_data["humidity_percent"]),
+            soil_temperature=safe_float(sensor_data["temperature"])
         )
 
         weather_summary = WeatherSummary(
-            air_temperature=float(latest_weather['temperature_2m']),
-            precipitation_24h=float(features_df['precip_24h_sum'].iloc[0]),
-            wind_speed=float(latest_weather['wind_speed_10m']),
-            solar_radiation=float(latest_weather['shortwave_radiation'])
+            air_temperature=safe_float(latest_weather['temperature_2m']),
+            precipitation_24h=safe_float(features_df['precip_24h_sum'].iloc[0]),
+            wind_speed=safe_float(latest_weather['wind_speed_10m']),
+            solar_radiation=safe_float(latest_weather['shortwave_radiation'])
         )
+
+        # Remove microseconds from timestamp for cleaner output
+        clean_timestamp = now_utc.replace(microsecond=0)
 
         response = PredictionResponse(
             irrigation_needed=prediction['irrigation_needed'],
             recommended_water_percent=prediction['recommended_water_percent'],
             irrigation_time_min=prediction['irrigation_time_min'],
-            confidence=prediction['confidence'],
+            confidence_score=safe_float(prediction['confidence_score'], decimals=5),
             sensor_data=sensor_summary,
             weather_summary=weather_summary,
-            timestamp=datetime.utcnow()
+            timestamp=clean_timestamp
         )
 
         return response
