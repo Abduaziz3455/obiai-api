@@ -193,7 +193,7 @@ async def predict_irrigation(request: PredictionRequest):
         clean_timestamp = to_tashkent_tz(now_utc.replace(microsecond=0))
 
         # Save prediction to database
-        await PredictionHistory.create(
+        prediction_record = await PredictionHistory.create(
             device_id=request.device_id,
             sensor_reading_id=sensor_reading.id,
             soil_moisture=safe_float(sensor_data["humidity_percent"]),
@@ -207,6 +207,7 @@ async def predict_irrigation(request: PredictionRequest):
         )
 
         response = PredictionResponse(
+            id=str(prediction_record.id),
             irrigation_needed=prediction['irrigation_needed'],
             recommended_water_percent=prediction['recommended_water_percent'],
             irrigation_time_min=prediction['irrigation_time_min'],
