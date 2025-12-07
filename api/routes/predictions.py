@@ -13,7 +13,7 @@ from api.models.prediction import (
     WeatherSummary
 )
 from api.database.models import SensorReading, PredictionHistory
-from api.services.weather_service import WeatherService
+from api.services.weather_db_service import WeatherDBService
 from api.services.feature_service import FeatureService
 from api.services.prediction_service import PredictionService
 from api.dependencies import get_models
@@ -46,7 +46,7 @@ def to_tashkent_tz(utc_datetime):
 router = APIRouter()
 
 # Initialize services
-weather_service = WeatherService()
+weather_db_service = WeatherDBService()
 feature_service = FeatureService()
 
 
@@ -125,9 +125,9 @@ async def predict_irrigation(request: PredictionRequest):
             for reading in historical_readings
         ]
 
-        # Step 2: Fetch weather data (current + 30 days historical)
+        # Step 2: Fetch weather data from database (current + 30 days historical)
         try:
-            weather_df = await weather_service.get_current_and_historical_weather(
+            weather_df = await weather_db_service.get_current_and_historical_weather(
                 latitude=request.location.latitude,
                 longitude=request.location.longitude,
                 hours_back=720  # 30 days
@@ -135,13 +135,13 @@ async def predict_irrigation(request: PredictionRequest):
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Failed to fetch weather data: {str(e)}"
+                detail=f"Failed to fetch weather data from database: {str(e)}"
             )
 
         if weather_df.empty:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Weather API returned no data"
+                detail="No weather data available in database"
             )
 
         # Step 3: Generate features

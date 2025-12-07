@@ -116,3 +116,31 @@ class WeatherCache(Model):
 
     def __str__(self):
         return f"WeatherCache(location={self.location_key}, timestamp={self.timestamp})"
+
+
+class WeatherData(Model):
+    """Current weather data stored by scheduler."""
+
+    id = fields.BigIntField(pk=True)
+    location_key = fields.CharField(max_length=100, index=True)
+    latitude = fields.DecimalField(max_digits=9, decimal_places=6)
+    longitude = fields.DecimalField(max_digits=9, decimal_places=6)
+
+    # Current weather parameters
+    temperature_2m = fields.DecimalField(max_digits=5, decimal_places=2, null=True)
+    precipitation = fields.DecimalField(max_digits=7, decimal_places=3, null=True)
+    wind_speed_10m = fields.DecimalField(max_digits=6, decimal_places=2, null=True)
+    shortwave_radiation = fields.DecimalField(max_digits=8, decimal_places=2, null=True)
+
+    # Timestamp
+    timestamp = fields.DatetimeField(index=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "weather_data"
+        unique_together = (("location_key", "timestamp"),)
+        indexes = [("location_key", "timestamp"), ("timestamp",)]
+
+    def __str__(self):
+        return f"WeatherData(location={self.location_key}, timestamp={self.timestamp})"

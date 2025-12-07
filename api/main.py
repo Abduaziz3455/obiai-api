@@ -12,6 +12,7 @@ from tortoise.contrib.fastapi import register_tortoise
 
 from api.database import TORTOISE_ORM
 from api.routes import sensors, predictions, health, disease
+from api.services.weather_scheduler import weather_scheduler
 
 
 # Load API configuration
@@ -34,7 +35,35 @@ async def lifespan(app: FastAPI):
     print("🚀 Starting up API...")
     print("📦 Initializing Tortoise ORM...")
     # Tortoise ORM will be registered automatically
+
+    # Start weather scheduler
+    print("🌤️  Starting weather data scheduler...")
+    # Load locations from config file
+    try:
+        locations_config_path = os.path.join(os.path.dirname(__file__), "../config/locations.yaml")
+        with open(locations_config_path, 'r') as f:
+            locations_config = yaml.safe_load(f)
+
+        # Add all active locations to the scheduler
+        for location_id, location_data in locations_config.get('locations', {}).items():
+            if location_data.get('active', True):
+                latitude = location_data['latitude']
+                longitude = location_data['longitude']
+                weather_scheduler.add_location(latitude, longitude)
+                print(f"  ✓ Added location: {location_data['name']} ({latitude}, {longitude})")
+    except Exception as e:
+        print(f"  ⚠️  Failed to load locations from config: {e}")
+        print(f"  Using default location: Tashkent")
+        weather_scheduler.add_location(41.2995, 69.2401)
+
+    await weather_scheduler.start()
+
     yield
+
+    # Shutdown: Stop weather scheduler
+    print("🛑 Stopping weather data scheduler...")
+    await weather_scheduler.stop()
+
     # Shutdown: Close database connections
     print("👋 Shutting down API...")
 
