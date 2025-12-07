@@ -5,9 +5,10 @@ import os
 from contextlib import asynccontextmanager
 
 import yaml
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from tortoise.contrib.fastapi import register_tortoise
 
 from api.database import TORTOISE_ORM
@@ -23,6 +24,17 @@ def load_api_config():
 
 
 api_config = load_api_config()
+
+
+# Custom middleware to add CORS headers to all responses including static files
+class CORSStaticFilesMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # Add CORS headers to all responses
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
 
 
 @asynccontextmanager
@@ -93,6 +105,9 @@ if api_config['cors']['enabled']:
         allow_methods=api_config['cors']['allow_methods'],
         allow_headers=api_config['cors']['allow_headers'],
     )
+
+# Add custom middleware to ensure CORS headers on static files
+app.add_middleware(CORSStaticFilesMiddleware)
 
 # Mount static files for disease prediction uploads
 static_dir = os.path.join(os.path.dirname(__file__), "../static")
