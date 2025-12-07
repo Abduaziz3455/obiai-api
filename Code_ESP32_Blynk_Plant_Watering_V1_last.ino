@@ -179,10 +179,10 @@ void sendSensorDataToServer() {
     HTTPClient http;
     String serverUrl = "http://" + String(serverIp) + ":" + String(serverPort) + String(serverPath);
 
-    // ISO 8601 formatida timestamp yaratish (UTC)
+    // ISO 8601 formatida timestamp yaratish (Asia/Tashkent vaqti)
     time_t now = time(nullptr);
     struct tm timeinfo;
-    gmtime_r(&now, &timeinfo);
+    localtime_r(&now, &timeinfo);
     char timestamp[25];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
 
@@ -277,8 +277,8 @@ void setup() {
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
 
-    // NTP vaqtni sinxronlashtirish
-    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    // NTP vaqtni sinxronlashtirish (Asia/Tashkent: UTC+5)
+    configTime(5 * 3600, 0, "pool.ntp.org", "time.nist.gov");
     Serial.print("Vaqtni sinxronlashtirish...");
     int ntp_retries = 0;
     while (time(nullptr) < 8 * 3600 * 2 && ntp_retries < 15) {

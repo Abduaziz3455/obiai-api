@@ -2,7 +2,6 @@
 Pydantic models for sensor data validation.
 """
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -20,15 +19,16 @@ class SensorDataRequest(BaseModel):
     @classmethod
     def timestamp_not_future(cls, v):
         """Validate that timestamp is not in the future and ensure timezone-aware."""
-        from datetime import timezone
+        from datetime import timezone, timedelta
 
-        # If naive datetime, assume UTC
+        # If naive datetime, assume it's in Asia/Tashkent timezone (UTC+5)
         if v.tzinfo is None:
-            v = v.replace(tzinfo=timezone.utc)
+            # Convert Tashkent time to UTC by subtracting 5 hours
+            v = v.replace(tzinfo=timezone.utc) - timedelta(hours=5)
 
-        # Check not in future
+        # Check not in future (with 1 minute tolerance for clock differences)
         now = datetime.now(timezone.utc)
-        if v > now:
+        if v > now + timedelta(minutes=1):
             raise ValueError('timestamp cannot be in the future')
 
         return v
