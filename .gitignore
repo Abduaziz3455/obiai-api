@@ -19,5 +19,6 @@ data/
 migrations/models/
 
 # Uploaded images (keep directory structure)
-static/uploads/*
-!static/uploads/.gitkeep
+static/
+models/best_model.h5
+.claude/
