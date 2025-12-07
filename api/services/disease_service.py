@@ -12,44 +12,57 @@ from api.models.disease import DiseasePrediction
 
 # Disease mapping (aligned with PlantVillage dataset)
 DISEASE_MAPPING = {
-    "Apple___Apple_scab": "Olma - Qotir",
-    "Apple___Black_rot": "Olma - Qora_chirish",
-    "Apple___Cedar_apple_rust": "Olma - Zang",
-    "Apple___healthy": "Olma - Soglom",
-    "Blueberry___healthy": "Chernika - Soglom",
-    "Cherry_(including_sour)___Powdery_mildew": "Olcha - Un_shudring",
-    "Cherry_(including_sour)___healthy": "Olcha - Soglom",
-    "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": "Makkajoxori - Kulrang_dog",
-    "Corn_(maize)___Common_rust_": "Makkajoxori - Zang",
-    "Corn_(maize)___Northern_Leaf_Blight": "Makkajoxori - Shimoliy_barg_kuyishi",
-    "Corn_(maize)___healthy": "Makkajoxori - Soglom",
-    "Grape___Black_rot": "Uzum - Qora_chirish",
-    "Grape___Esca_(Black_Measles)": "Uzum - Qora_dog",
-    "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": "Uzum - Barg_kuyishi",
-    "Grape___healthy": "Uzum - Soglom",
-    "Orange___Haunglongbing_(Citrus_greening)": "Apelsin - Sitrus_yashil_kasalligi",
-    "Peach___Bacterial_spot": "Shaftoli - Bakterial_dog",
-    "Peach___healthy": "Shaftoli - Soglom",
-    "Pepper,_bell___Bacterial_spot": "Bulgarqalampir - Bakterial_dog",
-    "Pepper,_bell___healthy": "Bulgarqalampir - Soglom",
-    "Potato___Early_blight": "Kartoshka - Erta_kuyish",
-    "Potato___Late_blight": "Kartoshka - Kech_kuyish",
-    "Potato___healthy": "Kartoshka - Soglom",
-    "Raspberry___healthy": "Malina - Soglom",
-    "Soybean___healthy": "Soya - Soglom",
-    "Squash___Powdery_mildew": "Qovoq - Un_shudring",
-    "Strawberry___Leaf_scorch": "Qulupnay - Barg_kuyishi",
-    "Strawberry___healthy": "Qulupnay - Soglom",
-    "Tomato___Bacterial_spot": "Pomidor - Bakterial_dog",
-    "Tomato___Early_blight": "Pomidor - Erta_kuyish",
-    "Tomato___Late_blight": "Pomidor - Kech_kuyish",
-    "Tomato___Leaf_Mold": "Pomidor - Barg_mog'ori",
-    "Tomato___Septoria_leaf_spot": "Pomidor - Septoriya_dog",
-    "Tomato___Spider_mites Two-spotted_spider_mite": "Pomidor - Orgimchakkana",
-    "Tomato___Target_Spot": "Pomidor - Halqali_dog",
-    "Tomato___Tomato_mosaic_virus": "Pomidor - Mozaika_virusi",
-    "Tomato___Tomato_Yellow_Leaf_Curl_Virus": "Pomidor - Sariq_barg_virusu",
-    "Tomato___healthy": "Pomidor - Soglom"
+    "Apple___Apple_scab": "Olma — Qotir kasalligi",
+    "Apple___Black_rot": "Olma — Qora chirish",
+    "Apple___Cedar_apple_rust": "Olma — Sadr zang kasalligi",
+    "Apple___healthy": "Olma — Sog‘lom",
+
+    "Blueberry___healthy": "Ko‘k meva — Sog‘lom",
+
+    "Cherry_(including_sour)___Powdery_mildew": "Olcha — Un shudring",
+    "Cherry_(including_sour)___healthy": "Olcha — Sog‘lom",
+
+    "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": "Makkajo‘xori — Kulrang barg dog‘i",
+    "Corn_(maize)___Common_rust_": "Makkajo‘xori — Zang kasalligi",
+    "Corn_(maize)___Northern_Leaf_Blight": "Makkajo‘xori — Shimoliy barg kuyishi",
+    "Corn_(maize)___healthy": "Makkajo‘xori — Sog‘lom",
+
+    "Grape___Black_rot": "Uzum — Qora chirish",
+    "Grape___Esca_(Black_Measles)": "Uzum — Eska (Qora qizamiq)",
+    "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": "Uzum — Barg kuyishi",
+    "Grape___healthy": "Uzum — Sog‘lom",
+
+    "Orange___Haunglongbing_(Citrus_greening)": "Apelsin — Sitrus yashillanish kasalligi (HLB)",
+
+    "Peach___Bacterial_spot": "Shaftoli — Bakterial dog‘",
+    "Peach___healthy": "Shaftoli — Sog‘lom",
+
+    "Pepper,_bell___Bacterial_spot": "Bulgar qalampiri — Bakterial dog‘",
+    "Pepper,_bell___healthy": "Bulgar qalampiri — Sog‘lom",
+
+    "Potato___Early_blight": "Kartoshka — Erta kuyish (Alternarioz)",
+    "Potato___Late_blight": "Kartoshka — Kech kuyish (Fitoftoroz)",
+    "Potato___healthy": "Kartoshka — Sog‘lom",
+
+    "Raspberry___healthy": "Malina — Sog‘lom",
+
+    "Soybean___healthy": "Soya — Sog‘lom",
+
+    "Squash___Powdery_mildew": "Qovoq — Un shudring",
+
+    "Strawberry___Leaf_scorch": "Qulupnay — Barg kuyishi",
+    "Strawberry___healthy": "Qulupnay — Sog‘lom",
+
+    "Tomato___Bacterial_spot": "Pomidor — Bakterial dog‘",
+    "Tomato___Early_blight": "Pomidor — Erta kuyish",
+    "Tomato___Late_blight": "Pomidor — Kech kuyish",
+    "Tomato___Leaf_Mold": "Pomidor — Barg mog‘ori",
+    "Tomato___Septoria_leaf_spot": "Pomidor — Septoriya dog‘i",
+    "Tomato___Spider_mites Two-spotted_spider_mite": "Pomidor — Ikki nuqtali o‘rgimchak kana",
+    "Tomato___Target_Spot": "Pomidor — Nishonli dog‘",
+    "Tomato___Tomato_mosaic_virus": "Pomidor — Mozaika virusi",
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus": "Pomidor — Sariq barg o‘ralish virusi",
+    "Tomato___healthy": "Pomidor — Sog‘lom"
 }
 
 CLASS_LABELS = list(DISEASE_MAPPING.keys())
