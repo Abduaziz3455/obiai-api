@@ -13,8 +13,8 @@ api:
     enabled: true
     origins:
       - "*"
-    allow_credentials: true
-    allow_methods: ["GET", "POST", "PUT", "DELETE"]
+    allow_credentials: false
+    allow_methods: ["*"]
     allow_headers: ["*"]
 
   rate_limiting:
