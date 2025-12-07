@@ -124,6 +124,7 @@ Store sensor reading from IoT device.
   "id": 1,
   "device_id": "sensor_001",
   "timestamp": "2025-11-19T17:55:00Z",
+  "air_humidity": 550,
   "humidity_percent": 35.5,
   "temperature": 22.8,
   "message": "Sensor data stored successfully"
@@ -147,7 +148,16 @@ curl -X POST "http://localhost:8000/api/v1/sensors/data" \
 
 **GET** `/api/v1/sensors/{device_id}/latest`
 
-Retrieve the most recent sensor reading.
+Retrieve the most recent sensor reading with optional weather data.
+
+**Query Parameters**:
+- `latitude` (optional): Latitude coordinate (-90 to 90) for fetching current weather
+- `longitude` (optional): Longitude coordinate (-180 to 180) for fetching current weather
+
+**Example**:
+```bash
+curl "http://localhost:8000/api/v1/sensors/sensor_001/latest?latitude=40.48&longitude=65.355"
+```
 
 **Response** (200 OK):
 ```json
@@ -155,13 +165,90 @@ Retrieve the most recent sensor reading.
   "id": 1,
   "device_id": "sensor_001",
   "timestamp": "2025-11-19T17:55:00Z",
+  "air_humidity": 550,
   "humidity_percent": 35.5,
   "temperature": 22.8,
+  "weather": {
+    "air_temperature": 28.5,
+    "precipitation": 0.0,
+    "wind_speed": 5.2,
+    "solar_radiation": 650.0,
+    "timestamp": "2025-11-19T17:00:00Z"
+  },
   "message": "Latest sensor data retrieved successfully"
 }
 ```
 
-### 3. Predict Irrigation
+**Response without weather** (if latitude/longitude not provided):
+```json
+{
+  "id": 1,
+  "device_id": "sensor_001",
+  "timestamp": "2025-11-19T17:55:00Z",
+  "air_humidity": 550,
+  "humidity_percent": 35.5,
+  "temperature": 22.8,
+  "weather": null,
+  "message": "Latest sensor data retrieved successfully"
+}
+```
+
+### 3. Get Sensor History
+
+**GET** `/api/v1/sensors/{device_id}/history`
+
+Retrieve historical sensor readings for a device with optional pagination, time filters, and weather data.
+
+**Query Parameters**:
+- `limit` (optional): Maximum number of records to return (default: 100, max: 1000)
+- `offset` (optional): Number of records to skip (default: 0)
+- `hours_back` (optional): Filter data from last N hours
+- `latitude` (optional): Latitude coordinate for fetching current weather
+- `longitude` (optional): Longitude coordinate for fetching current weather
+
+**Example**:
+```bash
+curl "http://localhost:8000/api/v1/sensors/sensor_001/history?limit=10&latitude=40.48&longitude=65.355"
+```
+
+**Response** (200 OK):
+```json
+{
+  "total": 150,
+  "data": [
+    {
+      "id": 150,
+      "device_id": "sensor_001",
+      "timestamp": "2025-11-19T18:00:00Z",
+      "air_humidity": 550,
+      "humidity_percent": 35.5,
+      "temperature": 22.8,
+      "weather": {
+        "air_temperature": 28.5,
+        "precipitation": 0.0,
+        "wind_speed": 5.2,
+        "solar_radiation": 650.0,
+        "timestamp": "2025-11-19T17:00:00Z"
+      },
+      "message": ""
+    },
+    {
+      "id": 149,
+      "device_id": "sensor_001",
+      "timestamp": "2025-11-19T17:00:00Z",
+      "air_humidity": 545,
+      "humidity_percent": 34.8,
+      "temperature": 22.5,
+      "weather": null,
+      "message": ""
+    }
+  ]
+}
+```
+
+**Note**: Weather data is only included in the first (most recent) reading to reduce response size.
+
+### 4. Predict Irrigation
 
 **POST** `/api/v1/predictions`
 
@@ -216,7 +303,7 @@ curl -X POST "http://localhost:8000/api/v1/predictions" \
   }'
 ```
 
-### 4. Health Check
+### 5. Health Check
 
 **GET** `/api/v1/health`
 

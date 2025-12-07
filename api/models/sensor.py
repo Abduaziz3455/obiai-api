@@ -7,6 +7,16 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
 
+class WeatherSummary(BaseModel):
+    """Summary of current weather conditions."""
+
+    air_temperature: Optional[float] = Field(None, description="Air temperature in Celsius")
+    precipitation: Optional[float] = Field(None, description="Precipitation in mm")
+    wind_speed: Optional[float] = Field(None, description="Wind speed in m/s")
+    solar_radiation: Optional[float] = Field(None, description="Solar radiation in W/m²")
+    timestamp: Optional[datetime] = Field(None, description="Weather data timestamp")
+
+
 class SensorDataRequest(BaseModel):
     """Request model for storing sensor data."""
 
@@ -55,9 +65,10 @@ class SensorDataResponse(BaseModel):
     id: int = Field(..., description="Database ID of the sensor reading")
     device_id: str = Field(..., description="Sensor device identifier")
     timestamp: datetime = Field(..., description="Timestamp of the reading")
-    humidity_raw: float = Field(..., description="Air humidity percentage")
+    air_humidity: float = Field(..., description="Air humidity percentage")
     humidity_percent: float = Field(..., description="Soil moisture percentage")
     temperature: float = Field(..., description="Soil temperature in Celsius")
+    weather: Optional[WeatherSummary] = Field(None, description="Current weather conditions (if location provided)")
     message: str = Field(default="Sensor data stored successfully", description="Success message")
 
     model_config = {

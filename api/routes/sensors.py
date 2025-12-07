@@ -1,16 +1,21 @@
 """
 Sensor data endpoints for storing IoT sensor readings.
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 from tortoise.exceptions import IntegrityError
+from typing import Optional
 
-from api.models.sensor import SensorDataRequest, SensorDataResponse, SensorDataListResponse, SensorStatistics
+from api.models.sensor import SensorDataRequest, SensorDataResponse, SensorDataListResponse, SensorStatistics, WeatherSummary
 from api.database.models import SensorReading
+from api.services.weather_service import WeatherService
 from tortoise.functions import Min, Max, Avg
 from datetime import timezone
 from zoneinfo import ZoneInfo
 
 router = APIRouter()
+
+# Initialize weather service
+weather_service = WeatherService()
 
 
 def to_tashkent_tz(utc_datetime):
@@ -22,6 +27,42 @@ def to_tashkent_tz(utc_datetime):
         utc_datetime = utc_datetime.replace(tzinfo=timezone.utc)
     # Convert to Tashkent timezone
     return utc_datetime.astimezone(ZoneInfo("Asia/Tashkent"))
+
+
+async def fetch_current_weather(latitude: float, longitude: float) -> Optional[WeatherSummary]:
+    """
+    Fetch current weather data from Open-Meteo API.
+
+    Args:
+        latitude: Latitude coordinate
+        longitude: Longitude coordinate
+
+    Returns:
+        WeatherSummary or None if fetch fails
+    """
+    try:
+        weather_df = await weather_service.get_current_and_historical_weather(
+            latitude=latitude,
+            longitude=longitude,
+            hours_back=24  # Get last 24 hours to get current data
+        )
+
+        if weather_df.empty:
+            return None
+
+        # Get the latest weather data
+        latest_weather = weather_df.iloc[-1]
+
+        return WeatherSummary(
+            air_temperature=float(latest_weather['temperature_2m']) if latest_weather['temperature_2m'] is not None else None,
+            precipitation=float(latest_weather['precipitation']) if latest_weather['precipitation'] is not None else None,
+            wind_speed=float(latest_weather['wind_speed_10m']) if latest_weather['wind_speed_10m'] is not None else None,
+            solar_radiation=float(latest_weather['shortwave_radiation']) if latest_weather['shortwave_radiation'] is not None else None,
+            timestamp=latest_weather['timestamp']
+        )
+    except Exception:
+        # Return None if weather fetch fails - sensor data is still valid
+        return None
 
 
 @router.post(
@@ -66,7 +107,7 @@ async def store_sensor_data(sensor_data: SensorDataRequest):
             id=sensor_reading.id,
             device_id=sensor_reading.device_id,
             timestamp=to_tashkent_tz(sensor_reading.timestamp),
-            humidity_raw=float(sensor_reading.humidity_raw),
+            air_humidity=float(sensor_reading.humidity_raw),
             humidity_percent=float(sensor_reading.humidity_percent),
             temperature=float(sensor_reading.temperature),
             message="Sensor data stored successfully"
@@ -94,17 +135,23 @@ async def store_sensor_data(sensor_data: SensorDataRequest):
     "/sensors/{device_id}/latest",
     response_model=SensorDataResponse,
     summary="Get latest sensor reading",
-    description="Retrieve the most recent sensor reading for a device"
+    description="Retrieve the most recent sensor reading for a device with optional weather data"
 )
-async def get_latest_sensor_data(device_id: str):
+async def get_latest_sensor_data(
+    device_id: str,
+    latitude: Optional[float] = Query(None, description="Latitude for weather data", ge=-90, le=90),
+    longitude: Optional[float] = Query(None, description="Longitude for weather data", ge=-180, le=180)
+):
     """
     Get the latest sensor reading for a device.
 
     Args:
         device_id: Sensor device identifier
+        latitude: Optional latitude for fetching current weather data
+        longitude: Optional longitude for fetching current weather data
 
     Returns:
-        SensorDataResponse: Latest sensor reading
+        SensorDataResponse: Latest sensor reading with optional weather data
 
     Raises:
         404: No sensor data found for device
@@ -117,13 +164,19 @@ async def get_latest_sensor_data(device_id: str):
             detail=f"No sensor data found for device '{device_id}'"
         )
 
+    # Fetch weather data if location provided
+    weather = None
+    if latitude is not None and longitude is not None:
+        weather = await fetch_current_weather(latitude, longitude)
+
     return SensorDataResponse(
         id=sensor_reading.id,
         device_id=sensor_reading.device_id,
         timestamp=to_tashkent_tz(sensor_reading.timestamp),
-        humidity_raw=float(sensor_reading.humidity_raw),
+        air_humidity=float(sensor_reading.humidity_raw),
         humidity_percent=float(sensor_reading.humidity_percent),
         temperature=float(sensor_reading.temperature),
+        weather=weather,
         message="Latest sensor data retrieved successfully"
     )
 
@@ -132,13 +185,15 @@ async def get_latest_sensor_data(device_id: str):
     "/sensors/{device_id}/history",
     response_model=SensorDataListResponse,
     summary="Get sensor reading history",
-    description="Retrieve all sensor readings for a device with optional time filters and pagination"
+    description="Retrieve all sensor readings for a device with optional time filters, pagination, and weather data"
 )
 async def get_sensor_history(
     device_id: str,
     limit: int = 100,
     offset: int = 0,
-    hours_back: int | None = None
+    hours_back: int | None = None,
+    latitude: Optional[float] = Query(None, description="Latitude for weather data", ge=-90, le=90),
+    longitude: Optional[float] = Query(None, description="Longitude for weather data", ge=-180, le=180)
 ):
     """
     Get historical sensor readings for a device.
@@ -148,9 +203,11 @@ async def get_sensor_history(
         limit: Maximum number of records to return (default: 100, max: 1000)
         offset: Number of records to skip (default: 0)
         hours_back: Optional filter to get data from last N hours
+        latitude: Optional latitude for fetching current weather data
+        longitude: Optional longitude for fetching current weather data
 
     Returns:
-        SensorDataListResponse: List of sensor readings with total count
+        SensorDataListResponse: List of sensor readings with total count and optional weather data
 
     Raises:
         400: Invalid parameters
@@ -201,18 +258,24 @@ async def get_sensor_history(
     # Get paginated results, ordered by most recent first
     sensor_readings = await query.order_by('-timestamp').offset(offset).limit(limit)
 
+    # Fetch weather data if location provided (only once for all readings)
+    weather = None
+    if latitude is not None and longitude is not None:
+        weather = await fetch_current_weather(latitude, longitude)
+
     # Convert to response format
     data = [
         SensorDataResponse(
             id=reading.id,
             device_id=reading.device_id,
             timestamp=to_tashkent_tz(reading.timestamp),
-            humidity_raw=float(reading.humidity_raw),
+            air_humidity=float(reading.humidity_raw),
             humidity_percent=float(reading.humidity_percent),
             temperature=float(reading.temperature),
+            weather=weather if idx == 0 else None,  # Only include weather in the first reading
             message=""
         )
-        for reading in sensor_readings
+        for idx, reading in enumerate(sensor_readings)
     ]
 
     return SensorDataListResponse(
