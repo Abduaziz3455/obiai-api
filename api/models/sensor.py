@@ -12,7 +12,7 @@ class SensorDataRequest(BaseModel):
 
     device_id: str = Field(..., min_length=1, max_length=50, description="Unique sensor device identifier")
     timestamp: datetime = Field(..., description="Timestamp of the sensor reading (ISO 8601 format)")
-    humidity_raw: int = Field(..., ge=0, description="Raw humidity sensor value")
+    humidity_raw: float = Field(..., ge=0, le=100, description="Air humidity percentage (0-100)")
     humidity_percent: float = Field(..., ge=0, le=100, description="Soil moisture percentage (0-100)")
     temperature: float = Field(..., ge=-20, le=60, description="Soil temperature in Celsius")
 
@@ -40,7 +40,7 @@ class SensorDataRequest(BaseModel):
                 {
                     "device_id": "sensor_001",
                     "timestamp": "2025-12-07T11:42:33+05:00",
-                    "humidity_raw": 550,
+                    "humidity_raw": 56,
                     "humidity_percent": 35.5,
                     "temperature": 22.8
                 }
@@ -55,6 +55,7 @@ class SensorDataResponse(BaseModel):
     id: int = Field(..., description="Database ID of the sensor reading")
     device_id: str = Field(..., description="Sensor device identifier")
     timestamp: datetime = Field(..., description="Timestamp of the reading")
+    humidity_raw: float = Field(..., description="Air humidity percentage")
     humidity_percent: float = Field(..., description="Soil moisture percentage")
     temperature: float = Field(..., description="Soil temperature in Celsius")
     message: str = Field(default="Sensor data stored successfully", description="Success message")

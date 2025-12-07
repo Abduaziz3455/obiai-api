@@ -184,13 +184,13 @@ void sendSensorDataToServer() {
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
     char timestamp[25];
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S%z", &timeinfo);
 
     // JSON formatida ma'lumotlarni yaratish (API talablariga mos)
     String postData = "{";
     postData += "\"device_id\":\"" + String(deviceId) + "\",";
     postData += "\"timestamp\":\"" + String(timestamp) + "\",";
-    postData += "\"humidity_raw\":" + String(sensorVal) + ",";
+    postData += "\"humidity_raw\":" + String(humidity1) + ",";
     postData += "\"humidity_percent\":" + String(moisturePercentage) + ",";
     postData += "\"temperature\":" + String(temperature1);
     postData += "}";

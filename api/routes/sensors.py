@@ -8,8 +8,20 @@ from api.models.sensor import SensorDataRequest, SensorDataResponse, SensorDataL
 from api.database.models import SensorReading
 from tortoise.functions import Min, Max, Avg
 from datetime import timezone
+from zoneinfo import ZoneInfo
 
 router = APIRouter()
+
+
+def to_tashkent_tz(utc_datetime):
+    """Convert UTC datetime to Asia/Tashkent timezone."""
+    if utc_datetime is None:
+        return None
+    # Ensure the datetime is timezone-aware (UTC)
+    if utc_datetime.tzinfo is None:
+        utc_datetime = utc_datetime.replace(tzinfo=timezone.utc)
+    # Convert to Tashkent timezone
+    return utc_datetime.astimezone(ZoneInfo("Asia/Tashkent"))
 
 
 @router.post(
@@ -53,7 +65,8 @@ async def store_sensor_data(sensor_data: SensorDataRequest):
         return SensorDataResponse(
             id=sensor_reading.id,
             device_id=sensor_reading.device_id,
-            timestamp=sensor_reading.timestamp,
+            timestamp=to_tashkent_tz(sensor_reading.timestamp),
+            humidity_raw=float(sensor_reading.humidity_raw),
             humidity_percent=float(sensor_reading.humidity_percent),
             temperature=float(sensor_reading.temperature),
             message="Sensor data stored successfully"
@@ -107,7 +120,8 @@ async def get_latest_sensor_data(device_id: str):
     return SensorDataResponse(
         id=sensor_reading.id,
         device_id=sensor_reading.device_id,
-        timestamp=sensor_reading.timestamp,
+        timestamp=to_tashkent_tz(sensor_reading.timestamp),
+        humidity_raw=float(sensor_reading.humidity_raw),
         humidity_percent=float(sensor_reading.humidity_percent),
         temperature=float(sensor_reading.temperature),
         message="Latest sensor data retrieved successfully"
@@ -192,7 +206,8 @@ async def get_sensor_history(
         SensorDataResponse(
             id=reading.id,
             device_id=reading.device_id,
-            timestamp=reading.timestamp,
+            timestamp=to_tashkent_tz(reading.timestamp),
+            humidity_raw=float(reading.humidity_raw),
             humidity_percent=float(reading.humidity_percent),
             temperature=float(reading.temperature),
             message=""
@@ -296,6 +311,6 @@ async def get_sensor_statistics(
         temperature_max=float(stats_result['temperature_max']),
         temperature_avg=round(float(stats_result['temperature_avg']), 2),
         temperature_latest=float(latest_reading.temperature),
-        oldest_reading=oldest_reading.timestamp,
-        latest_reading=latest_reading.timestamp
+        oldest_reading=to_tashkent_tz(oldest_reading.timestamp),
+        latest_reading=to_tashkent_tz(latest_reading.timestamp)
     )

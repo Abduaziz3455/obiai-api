@@ -15,6 +15,7 @@ from api.models.disease import (
     DiseasePredictionResponse,
     ErrorResponse,
 )
+from api.database.models import DiseasePredictionHistory
 
 
 router = APIRouter()
@@ -172,6 +173,18 @@ async def predict_disease(
         # Make prediction
         predictions = disease_service.predict_disease(image_path)
 
+        # Save to database
+        await DiseasePredictionHistory.create(
+            image_path=saved_path,
+            crop_type=crop,
+            predicted_class=predictions[0].className,
+            confidence=predictions[0].confidence,
+            all_predictions=[
+                {"className": p.className, "confidence": float(p.confidence)}
+                for p in predictions
+            ]
+        )
+
         return DiseasePredictionResponse(
             success=True,
             predictions=predictions,
@@ -186,6 +199,122 @@ async def predict_disease(
         raise HTTPException(
             status_code=500,
             detail=f"Serverda xatolik: {str(e)}"
+        )
+
+
+@router.get(
+    "/diseases/predictions/{prediction_id}",
+    summary="Get single disease prediction by ID",
+    description="Retrieve a specific disease prediction by its ID.",
+)
+async def get_disease_prediction_by_id(prediction_id: int):
+    """
+    Get a single disease prediction by ID.
+
+    Args:
+        prediction_id: The ID of the prediction to retrieve
+
+    Returns:
+        Single disease prediction record
+    """
+    try:
+        prediction = await DiseasePredictionHistory.get_or_none(id=prediction_id)
+
+        if not prediction:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Prediction with ID {prediction_id} not found"
+            )
+
+        return {
+            "success": True,
+            "prediction": {
+                "id": prediction.id,
+                "prediction_timestamp": prediction.prediction_timestamp,
+                "image_path": prediction.image_path,
+                "crop_type": prediction.crop_type,
+                "predicted_class": prediction.predicted_class,
+                "confidence": float(prediction.confidence),
+                "all_predictions": prediction.all_predictions,
+                "model_version": prediction.model_version
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch prediction: {str(e)}"
+        )
+
+
+@router.get(
+    "/diseases/predictions",
+    summary="Get disease prediction history",
+    description="Retrieve historical disease predictions with optional filtering and pagination.",
+)
+async def get_disease_predictions(
+    limit: int = 50,
+    offset: int = 0,
+    predicted_class: Optional[str] = None
+):
+    """
+    Get disease prediction history.
+
+    Args:
+        limit: Maximum number of records to return (default: 50, max: 100)
+        offset: Number of records to skip (default: 0)
+        predicted_class: Filter by predicted disease class (optional)
+
+    Returns:
+        List of historical disease predictions
+    """
+    try:
+        # Enforce maximum limit
+        limit = min(limit, 100)
+
+        # Build query
+        query = DiseasePredictionHistory.all()
+
+        # Apply filter if provided
+        if predicted_class:
+            query = query.filter(predicted_class__icontains=predicted_class)
+
+        # Get total count
+        total = await query.count()
+
+        # Get paginated results
+        predictions = await query.order_by('-prediction_timestamp').offset(offset).limit(limit)
+
+        # Format response
+        results = [
+            {
+                "id": p.id,
+                "prediction_timestamp": p.prediction_timestamp,
+                "image_path": p.image_path,
+                "crop_type": p.crop_type,
+                "predicted_class": p.predicted_class,
+                "confidence": float(p.confidence),
+                "all_predictions": p.all_predictions,
+                "model_version": p.model_version
+            }
+            for p in predictions
+        ]
+
+        return {
+            "success": True,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "count": len(results),
+            "predictions": results
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch predictions: {str(e)}"
         )
 
 
