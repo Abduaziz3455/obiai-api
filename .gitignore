@@ -17,3 +17,7 @@ data/
 
 # Database
 migrations/models/
+
+# Uploaded images (keep directory structure)
+static/uploads/*
+!static/uploads/.gitkeep
