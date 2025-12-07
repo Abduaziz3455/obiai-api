@@ -207,7 +207,7 @@ async def predict_irrigation(request: PredictionRequest):
         )
 
         response = PredictionResponse(
-            id=str(prediction_record.id),
+            id=prediction_record.id,
             irrigation_needed=prediction['irrigation_needed'],
             recommended_water_percent=prediction['recommended_water_percent'],
             irrigation_time_min=prediction['irrigation_time_min'],

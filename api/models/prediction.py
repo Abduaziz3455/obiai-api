@@ -90,7 +90,7 @@ class WeatherSummary(BaseModel):
 class PredictionResponse(BaseModel):
     """Response model for irrigation prediction."""
 
-    id: str = Field(..., description="Unique prediction identifier")
+    id: int = Field(..., description="Unique prediction identifier")
     irrigation_needed: int = Field(..., description="Whether irrigation is needed (0=No, 1=Yes)")
     recommended_water_percent: float = Field(..., ge=0, le=100, description="Recommended water amount (%)")
     irrigation_time_min: float = Field(..., ge=0, le=300, description="Recommended irrigation duration (minutes)")
@@ -107,7 +107,7 @@ class PredictionResponse(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "id": "pred_123456789",
+                    "id": 123456789,
                     "irrigation_needed": 1,
                     "recommended_water_percent": 65.5,
                     "irrigation_time_min": 120.0,
