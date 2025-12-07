@@ -5,7 +5,9 @@ Handles model loading and caching.
 import os
 import json
 from functools import lru_cache
+from typing import Optional
 import joblib
+import tensorflow as tf
 
 
 @lru_cache()
@@ -48,3 +50,30 @@ def get_models():
         "regressor_time": regressor_time,
         "config": config
     }
+
+
+@lru_cache()
+def get_disease_model() -> Optional[tf.keras.Model]:
+    """
+    Load TensorFlow disease prediction model once at startup and cache in memory.
+
+    Returns:
+        tf.keras.Model: Loaded TensorFlow model, or None if model file not found
+
+    Note:
+        The model file should be located at: models/best_model.h5
+    """
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    model_path = os.path.join(base_dir, "models", "best_model.h5")
+
+    if not os.path.exists(model_path):
+        print("⚠️  Disease model not found. Disease prediction will be unavailable.")
+        return None
+
+    try:
+        model = tf.keras.models.load_model(model_path)
+        print(f"✅ Disease model loaded successfully from: {model_path}")
+        return model
+    except Exception as e:
+        print(f"❌ Error loading disease model: {e}")
+        return None

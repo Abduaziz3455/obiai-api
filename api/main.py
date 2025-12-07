@@ -7,10 +7,11 @@ from contextlib import asynccontextmanager
 import yaml
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from tortoise.contrib.fastapi import register_tortoise
 
 from api.database import TORTOISE_ORM
-from api.routes import sensors, predictions, health
+from api.routes import sensors, predictions, health, disease
 
 
 # Load API configuration
@@ -64,10 +65,16 @@ if api_config['cors']['enabled']:
         allow_headers=api_config['cors']['allow_headers'],
     )
 
+# Mount static files for disease prediction uploads
+static_dir = os.path.join(os.path.dirname(__file__), "../static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 # Include routers
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
 app.include_router(sensors.router, prefix="/api/v1", tags=["Sensors"])
 app.include_router(predictions.router, prefix="/api/v1", tags=["Predictions"])
+app.include_router(disease.router, prefix="/api/v1", tags=["Disease Prediction"])
 
 
 @app.get("/")

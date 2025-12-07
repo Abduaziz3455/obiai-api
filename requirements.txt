@@ -6,6 +6,7 @@ numpy
 scikit-learn
 matplotlib
 xgboost
+joblib
 
 # Web Framework
 fastapi==0.115.5
@@ -23,3 +24,8 @@ httpx==0.28.1
 
 # Utilities
 python-dotenv==1.0.1
+
+# Disease Prediction
+tensorflow==2.18.0
+Pillow==11.0.0
+python-multipart==0.0.20
